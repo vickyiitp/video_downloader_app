@@ -1,0 +1,242 @@
+/* static/css/style.css */
+
+/* Import a modern font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+/* Basic setup for the whole page */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #121212; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    text-align: center;
+}
+
+/* Style the header */
+header h1 {
+    font-size: 2.5rem;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    font-size: 1.1rem;
+    color: #bb86fc; /* A nice accent color */
+}
+
+/* Main container for the form */
+main {
+    background-color: #1e1e1e;
+    padding: 2rem 3rem;
+    border-radius: 15px;
+    /* This creates the "3D" lifted effect */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 0 1px #bb86fc44;
+    width: 90%;
+    max-width: 600px;
+    margin-top: 2rem;
+}
+
+/* Style the input box where the URL is pasted */
+#video-url {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid #333;
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    font-size: 1rem;
+    box-sizing: border-box; /* Important for padding and width */
+    margin-bottom: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Make the input box glow when you click on it */
+#video-url:focus {
+    outline: none;
+    border-color: #bb86fc;
+    box-shadow: 0 0 10px #bb86fc80;
+}
+
+/* Style the download button */
+#download-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #121212;
+    background: linear-gradient(90deg, #bb86fc, #cf9bff);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer; /* Changes the mouse to a hand pointer on hover */
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Hover effect for the button */
+#download-btn:hover {
+    transform: translateY(-3px); /* Lifts the button slightly */
+    box-shadow: 0 6px 15px #bb86fc80;
+}
+
+/* Style the status message area */
+#status-message {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 24px; /* Prevents layout shifts */
+}
+
+/* Style the footer */
+footer {
+    margin-top: 3rem;
+    color: #777;
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: #999;
+    text-decoration: none;
+}
+
+/* static/css/style.css (add to the bottom) */
+
+#preview-container {
+    display: flex;
+    align-items: center;
+    margin-top: 1.5rem;
+    background-color: #2c2c2c;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: left;
+    border: 1px solid #333;
+}
+
+#preview-thumbnail {
+    width: 160px;
+    height: 90px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 1rem;
+}
+
+/* Find this existing rule */
+.preview-details {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    /* --- ADD THIS LINE --- */
+    min-width: 0; /* A flexbox trick to allow text truncation to work properly */
+}
+
+/* Find this existing rule */
+#preview-title {
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+    color: #ffffff;
+    /* --- ADD THESE THREE LINES --- */
+    white-space: nowrap;      /* Prevents the title from wrapping to a new line */
+    overflow: hidden;         /* Hides any part of the title that overflows its container */
+    text-overflow: ellipsis;  /* Adds the "..." to the end of a truncated title */
+}
+
+#preview-meta {
+    font-size: 0.9rem;
+    color: #aaa;
+    margin: 0 0 1rem 0;
+}
+
+/* Find this existing rule */
+#confirm-download-btn {
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #121212;
+    background: linear-gradient(90deg, #bb86fc, #cf9bff);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    /* --- ADD THIS LINE --- */
+    margin-top: auto; /* Pushes the button to the bottom of the card */
+}
+
+#confirm-download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px #bb86fc60;
+}
+
+/* static/css/style.css (add to the bottom) */
+
+/* --- Navigation Bar Styles --- */
+nav {
+    margin-top: 1rem;
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+}
+nav a {
+    color: #e0e0e0;
+    text-decoration: none;
+    font-size: 1.1rem;
+    padding-bottom: 5px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s, border-bottom-color 0.3s;
+}
+nav a:hover {
+    color: #bb86fc;
+    border-bottom-color: #bb86fc;
+}
+
+/* --- Generic Content Page Styles (for About, Tutorial, etc.) --- */
+.content-page {
+    background-color: #1e1e1e;
+    padding: 2rem 3rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 800px;
+    margin: 2rem auto;
+    text-align: left;
+}
+.content-page h2 {
+    color: #bb86fc;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+}
+.content-page h3 {
+    color: #e0e0e0;
+    margin-top: 2rem;
+}
+.content-page p, .content-page li {
+    line-height: 1.8;
+    color: #ccc;
+}
+.content-page ol {
+    padding-left: 20px;
+}
+
+/* --- Footer Social Links --- */
+footer {
+    text-align: center;
+    margin-top: 3rem;
+    color: #777;
+    font-size: 0.9rem;
+}
+.social-links {
+    margin-bottom: 1rem;
+}
+.social-links a {
+    color: #999;
+    text-decoration: none;
+    font-size: 1.5rem;
+    margin: 0 1rem;
+    transition: color 0.3s;
+}
+.social-links a:hover {
+    color: #bb86fc;
+}

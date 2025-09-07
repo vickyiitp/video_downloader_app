@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}How to Use - RapidGrab{% endblock %}
+
+{% block content %}
+<div class="content-page">
+    <h2>How It Works</h2>
+    <p>Using RapidGrab is simple! This guide explains how to download from both public and private websites.</p>
+
+    <h3>Downloading from Public Sites (YouTube, Facebook, etc.)</h3>
+    <ol>
+        <li>Find the video you want to download on a public site like YouTube.</li>
+        <li>Copy the video's URL from your browser's address bar.</li>
+        <li>Paste the URL into the input box on the RapidGrab homepage.</li>
+        <li>A preview of the video will appear. Click "Confirm Download" to start.</li>
+    </ol>
+
+    <h3>Downloading from Private Sites (University Portals, SharePoint, etc.)</h3>
+    <p>Private videos require you to prove you have permission to view them. You do this by providing your browser's login cookies.</p>
+    <ol>
+        <li>Install a browser extension called <strong>"Get cookies.txt LOCALLY"</strong> for Chrome or Firefox.</li>
+        <li>Log in to the private website (e.g., your university portal) as you normally would.</li>
+        <li>Navigate to the exact page where you can play the private video.</li>
+        <li>Click the cookie extension's icon in your browser and click "Export". This saves a <strong>cookies.txt</strong> file.</li>
+        <li>Open the downloaded <strong>cookies.txt</strong> file with a text editor, select all the text (Ctrl+A), and copy it (Ctrl+C).</li>
+        <li>On RapidGrab, paste the video URL in the top box and the cookie data you just copied into the larger box below it.</li>
+        <li>The preview will appear. Click "Confirm Download" to get your private video.</li>
+    </ol>
+</div>
+{% endblock %}

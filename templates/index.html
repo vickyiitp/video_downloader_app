@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<main>
+    <div id="url-form" class="downloader-form">
+        <input type="text" id="video-url" placeholder="Paste video URL here..." required>
+        <textarea id="cookie-data" placeholder="Paste cookie data here (optional, for private videos)"></textarea>
+        <p class="info-text">For private videos (SharePoint, etc.), you'll need to provide browser cookies. Use a browser extension like "Get cookies.txt LOCALLY" to get them.</p>
+        <button id="download-btn" style="display: none;">Download</button>
+    </div>
+    
+    <div id="status-message"></div>
+
+    <div id="preview-container" style="display: none;">
+        <img id="preview-thumbnail" src="" alt="Video Thumbnail">
+        <div class="preview-details">
+            <h2 id="preview-title">Video Title</h2>
+            <p id="preview-meta">Uploader | 00:00</p>
+            <button id="confirm-download-btn">Confirm Download</button>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const urlInput = document.getElementById('video-url');
+    const cookieDataInput = document.getElementById('cookie-data');
+    const statusMessage = document.getElementById('status-message');
+    const urlForm = document.getElementById('url-form');
+    const previewContainer = document.getElementById('preview-container');
+    const previewThumbnail = document.getElementById('preview-thumbnail');
+    const previewTitle = document.getElementById('preview-title');
+    const previewMeta = document.getElementById('preview-meta');
+    const confirmDownloadBtn = document.getElementById('confirm-download-btn');
+
+    let currentVideoUrl = '';
+
+    urlInput.addEventListener('paste', (event) => {
+        setTimeout(() => {
+            const pastedUrl = event.target.value;
+            if (pastedUrl) {
+                currentVideoUrl = pastedUrl;
+                fetchVideoInfo(pastedUrl);
+            }
+        }, 100);
+    });
+
+    function fetchVideoInfo(url) {
+        statusMessage.innerText = 'Fetching video info...';
+        statusMessage.style.color = '#bb86fc';
+        previewContainer.style.display = 'none';
+
+        const cookieData = cookieDataInput.value.trim();
+
+        fetch('/api/info/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ url: url, cookies: cookieData }), 
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const info = data.info;
+                previewThumbnail.src = info.thumbnail;
+                previewTitle.innerText = info.title;
+                previewMeta.innerText = `${info.uploader} | ${info.duration_string || ''}`;
+                previewContainer.style.display = 'flex';
+                statusMessage.innerText = '';
+            } else {
+                statusMessage.innerText = `Error: ${data.message}`;
+                statusMessage.style.color = 'red';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusMessage.innerText = 'An unexpected error occurred.';
+            statusMessage.style.color = 'red';
+        });
+    }
+
+    confirmDownloadBtn.addEventListener('click', () => {
+        if (!currentVideoUrl) return;
+        statusMessage.innerText = 'Preparing your download...';
+        statusMessage.style.color = '#bb86fc';
+
+        const cookieData = cookieDataInput.value.trim();
+
+        fetch('/api/download/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ url: currentVideoUrl, cookies: cookieData }),
+        })
+        .then(response => {
+            if (response.ok) {
+                const disposition = response.headers.get('content-disposition');
+                let filename = 'video.mp4';
+                if (disposition) {
+                    const match = /filename="(.+?)"/.exec(disposition);
+                    if (match) filename = match[1];
+                }
+                return response.blob().then(blob => ({ blob, filename }));
+            } else {
+                return response.json().then(err => Promise.reject(err));
+            }
+        })
+        .then(({ blob, filename }) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            statusMessage.innerText = 'Your download has started!';
+            statusMessage.style.color = 'green';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusMessage.innerText = `Error: ${error.message || 'An unexpected error occurred.'}`;
+            statusMessage.style.color = 'red';
+        });
+    });
+</script>
+{% endblock %}
