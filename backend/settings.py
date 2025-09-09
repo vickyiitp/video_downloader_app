@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-n9575u6$c$zat6%ba__g$vv0hjfirb%bdh88)2ed8iul4gz(7l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', '.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', '.onrender.com','neon-pasca-c5a199.netlify.app', '.netlify.app', 'localhost']
 
 
 # Application definition
