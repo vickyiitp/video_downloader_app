@@ -7,6 +7,19 @@
         <input type="text" id="video-url" placeholder="Paste video URL here..." required>
         <textarea id="cookie-data" placeholder="Paste cookie data here (optional, for private videos)"></textarea>
         <p class="info-text">For private videos (SharePoint, etc.), you'll need to provide browser cookies. Use a browser extension like "Get cookies.txt LOCALLY" to get them.</p>
+        
+        <div class="local-save-container">
+            <label class="toggle-switch">
+                <input type="checkbox" id="save-to-system" checked>
+                <span class="slider"></span>
+                Save directly to system downloads folder
+            </label>
+            <div id="system-path-wrapper">
+                <input type="text" id="system-path" value="{{ default_path }}" placeholder="Downloads folder path...">
+                <p class="path-description">Downloaded videos will be saved directly to this path on your computer.</p>
+            </div>
+        </div>
+
         <button id="download-btn" style="display: none;">Download</button>
     </div>
     
@@ -80,43 +93,74 @@
         });
     }
 
+    const saveToSystemCheckbox = document.getElementById('save-to-system');
+    const systemPathWrapper = document.getElementById('system-path-wrapper');
+
+    saveToSystemCheckbox.addEventListener('change', () => {
+        if (saveToSystemCheckbox.checked) {
+            systemPathWrapper.style.display = 'block';
+        } else {
+            systemPathWrapper.style.display = 'none';
+        }
+    });
+
     confirmDownloadBtn.addEventListener('click', () => {
         if (!currentVideoUrl) return;
         statusMessage.innerText = 'Preparing your download...';
         statusMessage.style.color = '#bb86fc';
 
         const cookieData = cookieDataInput.value.trim();
+        const saveToSystem = saveToSystemCheckbox.checked;
+        const systemPath = document.getElementById('system-path').value.trim();
 
         fetch('/api/download/', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ url: currentVideoUrl, cookies: cookieData }),
+            body: JSON.stringify({ 
+                url: currentVideoUrl, 
+                cookies: cookieData,
+                save_to_system: saveToSystem,
+                system_path: systemPath
+            }),
         })
         .then(response => {
             if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(data => ({ isJson: true, data }));
+                }
                 const disposition = response.headers.get('content-disposition');
                 let filename = 'video.mp4';
                 if (disposition) {
                     const match = /filename="(.+?)"/.exec(disposition);
                     if (match) filename = match[1];
                 }
-                return response.blob().then(blob => ({ blob, filename }));
+                return response.blob().then(blob => ({ isJson: false, blob, filename }));
             } else {
                 return response.json().then(err => Promise.reject(err));
             }
         })
-        .then(({ blob, filename }) => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-            statusMessage.innerText = 'Your download has started!';
-            statusMessage.style.color = 'green';
+        .then(res => {
+            if (res.isJson) {
+                if (res.data.status === 'success') {
+                    statusMessage.innerHTML = `Success! Video saved locally to:<br><strong style="word-break: break-all; color: #03dac6; font-size: 0.95rem;">${res.data.saved_path}</strong>`;
+                    statusMessage.style.color = '#03dac6';
+                } else {
+                    return Promise.reject(res.data);
+                }
+            } else {
+                const url = window.URL.createObjectURL(res.blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = res.filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                statusMessage.innerText = 'Your download has started!';
+                statusMessage.style.color = 'green';
+            }
         })
         .catch(error => {
             console.error('Error:', error);
