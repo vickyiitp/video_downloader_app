@@ -3,35 +3,47 @@
 
 {% block content %}
 <main>
-    <div id="url-form" class="downloader-form">
-        <input type="text" id="video-url" placeholder="Paste video URL here..." required>
-        <textarea id="cookie-data" placeholder="Paste cookie data here (optional, for private videos)"></textarea>
-        <p class="info-text">For private videos (SharePoint, etc.), you'll need to provide browser cookies. Use a browser extension like "Get cookies.txt LOCALLY" to get them.</p>
-        
-        <div class="local-save-container">
-            <label class="toggle-switch">
-                <input type="checkbox" id="save-to-system" checked>
-                <span class="slider"></span>
-                Save directly to system downloads folder
+    <div class="downloader-form">
+        <div class="input-group">
+            <label for="video-url" class="input-label">
+                <i class="fas fa-link"></i> Video URL
             </label>
-            <div id="system-path-wrapper">
-                <input type="text" id="system-path" value="{{ default_path }}" placeholder="Downloads folder path...">
-                <p class="path-description">Downloaded videos will be saved directly to this path on your computer.</p>
-            </div>
+            <input type="text" id="video-url" placeholder="Paste any video URL here..." required>
         </div>
 
-        <button id="download-btn" style="display: none;">Download</button>
+        <div class="input-group">
+            <label for="cookie-data" class="input-label">
+                <i class="fas fa-cookie-bite"></i> Cookies <span class="optional-tag">optional</span>
+            </label>
+            <textarea id="cookie-data" rows="3" placeholder="Paste cookies.txt content here (for private/protected videos)"></textarea>
+        </div>
+
+        <button id="fetch-btn" onclick="fetchInfo()">
+            <i class="fas fa-search"></i> Fetch Video
+        </button>
     </div>
-    
-    <div id="status-message"></div>
 
-    <div id="preview-container" style="display: none;">
-        <img id="preview-thumbnail" src="" alt="Video Thumbnail">
-        <div class="preview-details">
-            <h2 id="preview-title">Video Title</h2>
-            <p id="preview-meta">Uploader | 00:00</p>
-            <button id="confirm-download-btn">Confirm Download</button>
+    <!-- Status Area -->
+    <div id="status-area" style="display: none;">
+        <div id="status-icon"></div>
+        <p id="status-text"></p>
+    </div>
+
+    <!-- Video Preview Card -->
+    <div id="video-preview" style="display: none;">
+        <div class="preview-thumbnail-wrap">
+            <img id="preview-thumbnail" src="" alt="Video Thumbnail">
+            <span id="preview-duration" class="preview-duration-badge"></span>
         </div>
+        <div class="preview-info">
+            <h3 id="preview-title"></h3>
+            <p id="preview-site" class="preview-site-tag"><i class="fas fa-globe"></i> <span></span></p>
+            <p id="preview-channel"><i class="fas fa-user"></i> <span></span></p>
+            <p id="preview-views"><i class="fas fa-eye"></i> <span></span></p>
+        </div>
+        <button id="download-btn" onclick="startDownload()">
+            <i class="fas fa-download"></i> Download Video
+        </button>
     </div>
 </main>
 {% endblock %}
@@ -39,134 +51,147 @@
 {% block scripts %}
 <script>
     const urlInput = document.getElementById('video-url');
-    const cookieDataInput = document.getElementById('cookie-data');
-    const statusMessage = document.getElementById('status-message');
-    const urlForm = document.getElementById('url-form');
-    const previewContainer = document.getElementById('preview-container');
-    const previewThumbnail = document.getElementById('preview-thumbnail');
-    const previewTitle = document.getElementById('preview-title');
-    const previewMeta = document.getElementById('preview-meta');
-    const confirmDownloadBtn = document.getElementById('confirm-download-btn');
+    const cookieInput = document.getElementById('cookie-data');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const statusArea = document.getElementById('status-area');
+    const statusIcon = document.getElementById('status-icon');
+    const statusText = document.getElementById('status-text');
+    const previewCard = document.getElementById('video-preview');
 
     let currentVideoUrl = '';
 
-    urlInput.addEventListener('paste', (event) => {
-        setTimeout(() => {
-            const pastedUrl = event.target.value;
-            if (pastedUrl) {
-                currentVideoUrl = pastedUrl;
-                fetchVideoInfo(pastedUrl);
-            }
-        }, 100);
-    });
+    function showStatus(type, message) {
+        statusArea.style.display = 'flex';
+        statusArea.className = 'status-' + type;
 
-    function fetchVideoInfo(url) {
-        statusMessage.innerText = 'Fetching video info...';
-        statusMessage.style.color = '#bb86fc';
-        previewContainer.style.display = 'none';
+        if (type === 'loading') {
+            statusIcon.innerHTML = '<div class="spinner"></div>';
+        } else if (type === 'success') {
+            statusIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+        } else {
+            statusIcon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+        }
 
-        const cookieData = cookieDataInput.value.trim();
+        statusText.innerText = message;
+    }
+
+    function hideStatus() {
+        statusArea.style.display = 'none';
+    }
+
+    function formatViews(count) {
+        if (!count) return null;
+        if (count >= 1_000_000_000) return (count / 1_000_000_000).toFixed(1) + 'B views';
+        if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + 'M views';
+        if (count >= 1_000) return (count / 1_000).toFixed(1) + 'K views';
+        return count.toLocaleString() + ' views';
+    }
+
+    function fetchInfo() {
+        const url = urlInput.value.trim();
+        if (!url) {
+            showStatus('error', 'Please paste a video URL first.');
+            urlInput.focus();
+            return;
+        }
+
+        const cookies = cookieInput.value.trim();
+        currentVideoUrl = url;
+        previewCard.style.display = 'none';
+
+        fetchBtn.disabled = true;
+        fetchBtn.innerHTML = '<div class="btn-spinner"></div> Fetching...';
+        showStatus('loading', 'Fetching video info...');
 
         fetch('/api/info/', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ url: url, cookies: cookieData }), 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url, cookies: cookies }),
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const info = data.info;
-                previewThumbnail.src = info.thumbnail;
-                previewTitle.innerText = info.title;
-                previewMeta.innerText = `${info.uploader} | ${info.duration_string || ''}`;
-                previewContainer.style.display = 'flex';
-                statusMessage.innerText = '';
-            } else {
-                statusMessage.innerText = `Error: ${data.message}`;
-                statusMessage.style.color = 'red';
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(err => Promise.reject(err));
             }
+            return res.json();
         })
-        .catch(error => {
-            console.error('Error:', error);
-            statusMessage.innerText = 'An unexpected error occurred.';
-            statusMessage.style.color = 'red';
+        .then(data => {
+            hideStatus();
+
+            // Populate preview card
+            const thumbImg = document.getElementById('preview-thumbnail');
+            if (data.thumbnail) {
+                thumbImg.src = data.thumbnail;
+                thumbImg.style.display = 'block';
+            } else {
+                thumbImg.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80';
+                thumbImg.style.display = 'block';
+            }
+
+            document.getElementById('preview-title').textContent = data.title;
+            document.getElementById('preview-site').querySelector('span').textContent = data.site || 'Web Video';
+            document.getElementById('preview-duration').textContent = data.duration;
+            document.getElementById('preview-channel').querySelector('span').textContent = data.channel;
+
+            const viewsEl = document.getElementById('preview-views');
+            const formattedViews = formatViews(data.view_count);
+            if (formattedViews) {
+                viewsEl.querySelector('span').textContent = formattedViews;
+                viewsEl.style.display = '';
+            } else {
+                viewsEl.style.display = 'none';
+            }
+
+            // Show preview with animation
+            previewCard.style.display = 'flex';
+        })
+        .catch(err => {
+            console.error(err);
+            showStatus('error', err.message || 'Failed to fetch video info.');
+        })
+        .finally(() => {
+            fetchBtn.disabled = false;
+            fetchBtn.innerHTML = '<i class="fas fa-search"></i> Fetch Video';
         });
     }
 
-    const saveToSystemCheckbox = document.getElementById('save-to-system');
-    const systemPathWrapper = document.getElementById('system-path-wrapper');
-
-    saveToSystemCheckbox.addEventListener('change', () => {
-        if (saveToSystemCheckbox.checked) {
-            systemPathWrapper.style.display = 'block';
-        } else {
-            systemPathWrapper.style.display = 'none';
-        }
-    });
-
-    confirmDownloadBtn.addEventListener('click', () => {
+    function startDownload() {
         if (!currentVideoUrl) return;
-        statusMessage.innerText = 'Preparing your download...';
-        statusMessage.style.color = '#bb86fc';
 
-        const cookieData = cookieDataInput.value.trim();
-        const saveToSystem = saveToSystemCheckbox.checked;
-        const systemPath = document.getElementById('system-path').value.trim();
+        const cookies = cookieInput.value.trim();
 
-        fetch('/api/download/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                url: currentVideoUrl, 
-                cookies: cookieData,
-                save_to_system: saveToSystem,
-                system_path: systemPath
-            }),
-        })
-        .then(response => {
-            if (response.ok) {
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json().then(data => ({ isJson: true, data }));
-                }
-                const disposition = response.headers.get('content-disposition');
-                let filename = 'video.mp4';
-                if (disposition) {
-                    const match = /filename="(.+?)"/.exec(disposition);
-                    if (match) filename = match[1];
-                }
-                return response.blob().then(blob => ({ isJson: false, blob, filename }));
-            } else {
-                return response.json().then(err => Promise.reject(err));
-            }
-        })
-        .then(res => {
-            if (res.isJson) {
-                if (res.data.status === 'success') {
-                    statusMessage.innerHTML = `Success! Video saved locally to:<br><strong style="word-break: break-all; color: #03dac6; font-size: 0.95rem;">${res.data.saved_path}</strong>`;
-                    statusMessage.style.color = '#03dac6';
-                } else {
-                    return Promise.reject(res.data);
-                }
-            } else {
-                const url = window.URL.createObjectURL(res.blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = res.filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-                statusMessage.innerText = 'Your download has started!';
-                statusMessage.style.color = 'green';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            statusMessage.innerText = `Error: ${error.message || 'An unexpected error occurred.'}`;
-            statusMessage.style.color = 'red';
-        });
+        showStatus('loading', 'Preparing download... Check your browser download bar once server finishes processing.');
+
+        // Submit form natively so browser handles native file save / Save As prompt
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/download/';
+
+        const urlInputForm = document.createElement('input');
+        urlInputForm.type = 'hidden';
+        urlInputForm.name = 'url';
+        urlInputForm.value = currentVideoUrl;
+        form.appendChild(urlInputForm);
+
+        if (cookies) {
+            const cookieInputForm = document.createElement('input');
+            cookieInputForm.type = 'hidden';
+            cookieInputForm.name = 'cookies';
+            cookieInputForm.value = cookies;
+            form.appendChild(cookieInputForm);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+
+        setTimeout(() => {
+            showStatus('success', 'Download requested! Server is downloading & sending file to your browser.');
+        }, 3000);
+    }
+
+    urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') fetchInfo();
     });
 </script>
 {% endblock %}
