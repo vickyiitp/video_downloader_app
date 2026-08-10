@@ -12,23 +12,10 @@ import urllib.parse
 
 
 def _normalize_video_url(url):
-    """Normalize & clean video URLs across various platforms (SharePoint, Google Drive, etc.)."""
+    """Normalize & clean video URLs across various platforms."""
     if not url:
         return url
     url = url.strip()
-
-    # SharePoint URL normalization
-    if 'sharepoint.com' in url and '/personal/' in url:
-        try:
-            parsed = urllib.parse.urlparse(url)
-            path = urllib.parse.unquote(parsed.path)
-            if '/personal/' in path:
-                rel_path = '/personal/' + path.split('/personal/', 1)[1]
-                netloc = parsed.netloc
-                return f"https://{netloc}/_layouts/15/stream.aspx?id={urllib.parse.quote(rel_path)}"
-        except Exception:
-            pass
-
     return url
 
 
@@ -36,21 +23,73 @@ def _format_cookies_txt(cookie_raw):
     """Normalize user-pasted cookies from any format to valid Netscape tab-separated format."""
     if not cookie_raw or not cookie_raw.strip():
         return ""
+
+    now = int(time.time())
+    far_future = 2147483647
+
+    # Try parsing as JSON first (common format exported by browser extensions like EditThisCookie)
+    try:
+        cookies_json = json.loads(cookie_raw)
+        if isinstance(cookies_json, list):
+            lines = ["# Netscape HTTP Cookie File"]
+            for c in cookies_json:
+                if not isinstance(c, dict):
+                    continue
+                domain = c.get('domain', '')
+                if not domain:
+                    continue
+                flag = "TRUE" if domain.startswith('.') else "FALSE"
+                path = c.get('path', '/')
+                secure = "TRUE" if c.get('secure', False) else "FALSE"
+                
+                exp = c.get('expirationDate') or c.get('expires')
+                if exp is None:
+                    exp = far_future
+                else:
+                    try:
+                        exp = int(float(exp))
+                        if exp <= now:
+                            exp = far_future
+                    except Exception:
+                        exp = far_future
+                        
+                name = c.get('name', '')
+                val = c.get('value', '')
+                lines.append(f"{domain}\t{flag}\t{path}\t{secure}\t{exp}\t{name}\t{val}")
+            return '\n'.join(lines)
+    except json.JSONDecodeError:
+        pass
+
     lines = ["# Netscape HTTP Cookie File"]
     for line in cookie_raw.splitlines():
         s = line.strip()
-        if not s or s.startswith('#'):
+        if not s:
+            continue
+        is_httponly = False
+        if s.startswith('#HttpOnly_'):
+            is_httponly = True
+            s = s[len('#HttpOnly_'):]
+        elif s.startswith('#'):
             continue
         parts = re.split(r'\s+', s)
         if len(parts) >= 7:
             domain, flag, path, secure, exp, name = parts[:6]
             val = ' '.join(parts[6:])
-            lines.append(f"{domain}\t{flag}\t{path}\t{secure}\t{exp}\t{name}\t{val}")
+            try:
+                exp_val = int(float(exp))
+                if exp_val <= now:
+                    exp = str(far_future)
+            except Exception:
+                exp = str(far_future)
+            prefix = "#HttpOnly_" if is_httponly else ""
+            lines.append(f"{prefix}{domain}\t{flag}\t{path}\t{secure}\t{exp}\t{name}\t{val}")
         elif len(parts) >= 6:
             domain, flag, path, secure, name, val = parts[:6]
-            lines.append(f"{domain}\t{flag}\t{path}\t{secure}\t0\t{name}\t{val}")
+            prefix = "#HttpOnly_" if is_httponly else ""
+            lines.append(f"{prefix}{domain}\t{flag}\t{path}\t{secure}\t{far_future}\t{name}\t{val}")
         else:
-            lines.append(s)
+            prefix = "#HttpOnly_" if is_httponly else ""
+            lines.append(f"{prefix}{s}")
     return '\n'.join(lines)
 
 
@@ -184,7 +223,7 @@ def fetch_info(request):
 
         except Exception as e:
             err_msg = str(e)
-            if 'login.microsoftonline.com' in err_msg or 'Session cookies are required' in err_msg:
+            if 'login.microsoftonline.com' in err_msg or 'Session cookies are required' in err_msg or 'unable to extract player' in err_msg.lower():
                 err_msg = "Private / Protected video requiring authentication. Please log in on your browser, play the video once, and paste fresh cookies.txt into the cookies box."
             elif 'Private video' in err_msg or 'Sign in' in err_msg or 'login' in err_msg.lower():
                 err_msg = f"Private content detected. Please paste your cookies.txt for this website in the cookies box below to unlock access."
@@ -277,7 +316,7 @@ def download_video(request):
 
         except Exception as e:
             err_msg = str(e)
-            if 'login.microsoftonline.com' in err_msg or 'Session cookies are required' in err_msg:
+            if 'login.microsoftonline.com' in err_msg or 'Session cookies are required' in err_msg or 'unable to extract player' in err_msg.lower():
                 err_msg = "Private / Protected video requiring authentication. Please log in on your browser, play the video once, and paste fresh cookies.txt into the cookies box."
             elif 'Private video' in err_msg or 'Sign in' in err_msg or 'login' in err_msg.lower():
                 err_msg = f"Private content detected. Please paste your cookies.txt for this website in the cookies box below to unlock access."
